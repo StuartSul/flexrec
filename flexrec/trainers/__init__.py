@@ -1,3 +1,3 @@
 '''Trainers'''
 
-from flexrec.models.multitask_trainer import MultitaskTrainer
+from flexrec.trainers.multitask_trainer import MultitaskTrainer
