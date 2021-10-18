@@ -1,3 +1,4 @@
+absl-py >= 0.1.6
+scann >= 1.2.3
 tensorflow >= 2.6.0
 tensorflow-recommenders >= 0.6.0
-absl-py >= 0.1.6
