@@ -35,6 +35,10 @@ class RetrievalModel(tf.keras.Model):
     self.gravitation = gravitation
     self.regularization = regularization
     
+    self.__loss = tf.keras.losses.CategoricalCrossentropy(
+      from_logits=True, reduction=tf.keras.losses.Reduction.SUM
+    )
+    
     self.tok_k_metrics = {
       k: tf.keras.metrics.Mean(name=f"top_{k}_accuracy") for k in (1, 5, 10, 50, 100)
     }
@@ -84,15 +88,16 @@ class RetrievalModel(tf.keras.Model):
     })
 
     cosine_score, query_norm, candidate_norm = self.cosine_score(
-      query_reduced, candidate_reduced, pairwise=True
+      query_reduced, candidate_reduced, pairwise=False
     )
-
-    cosine_loss = tf.math.reduce_sum(-cosine_score)
+    labels = tf.eye(tf.shape(cosine_score)[0])
+    
+    cosine_loss = self.__loss(y_true=labels, y_pred=cosine_score)
     gravitation_loss = tf.math.reduce_sum(query_norm) + tf.math.reduce_sum(candidate_norm)
     loss = cosine_loss, gravitation_loss
 
     if not training:
-      self.update_top_k_metrics(query_reduced, cosine_score)
+      self.update_top_k_metrics(query_reduced, tf.linalg.diag_part(cosine_score))
 
     return loss
 
@@ -103,15 +108,20 @@ class RetrievalModel(tf.keras.Model):
     candidate_reduced = self.candidate_reduction(self._candidates_batched)
     
     cosine_score, _, _ = self.cosine_score(query_reduced, candidate_reduced, pairwise=False)
+    
+    update_ops = []
 
     for k in self.tok_k_metrics:
-      self.tok_k_metrics[k].update_state(
+      update_ops.append(self.tok_k_metrics[k].update_state(
         tf.math.in_top_k(
           targets=tf.zeros(tf.shape(cosine_score)[0], dtype=tf.int32),
           predictions=tf.concat([tf.reshape(true_candidate_score, (-1, 1)), cosine_score], axis=1),
           k=k
         )
-      )
+      ))
+    
+    with tf.control_dependencies(update_ops):
+      return
 
   def reset_metrics(self):
     for m in self.metrics:
@@ -140,7 +150,7 @@ class RetrievalModel(tf.keras.Model):
     return metrics
 
   def test_step(self, features: Dict[str, tf.Tensor]):
-
+        
     cosine_loss, gravitation_loss = self.compute_loss(features, training=False)
     regularization_loss = sum(self.losses)
     total_loss = cosine_loss +\
