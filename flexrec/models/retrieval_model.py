@@ -35,7 +35,7 @@ class RetrievalModel(tf.keras.Model):
     self.gravitation = gravitation
     self.regularization = regularization
     
-    self.__loss = tf.keras.losses.CategoricalCrossentropy(
+    self.loss_ = tf.keras.losses.CategoricalCrossentropy(
       from_logits=True, reduction=tf.keras.losses.Reduction.SUM
     )
     
@@ -92,7 +92,7 @@ class RetrievalModel(tf.keras.Model):
     )
     labels = tf.eye(tf.shape(cosine_score)[0])
     
-    cosine_loss = self.__loss(y_true=labels, y_pred=cosine_score)
+    cosine_loss = self.loss_(y_true=labels, y_pred=cosine_score)
     gravitation_loss = tf.math.reduce_sum(query_norm) + tf.math.reduce_sum(candidate_norm)
     loss = cosine_loss, gravitation_loss
 

@@ -52,7 +52,7 @@ class RankingModel(tf.keras.Model):
     
     self.regularization = regularization
 
-    self.__loss = tf.keras.losses.MeanSquaredError(
+    self.loss_ = tf.keras.losses.MeanSquaredError(
       reduction=tf.keras.losses.Reduction.SUM
     )
 
@@ -70,7 +70,7 @@ class RankingModel(tf.keras.Model):
   def compute_loss(self, features: Dict[str, tf.Tensor], training=False):
     labels = features.pop(self.label_name)
     scores = self(features)
-    return self.__loss(y_true=labels, y_pred=scores)
+    return self.loss_(y_true=labels, y_pred=scores)
 
   def train_step(self, features: Dict[str, tf.Tensor]):
 
