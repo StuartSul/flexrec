@@ -1,7 +1,6 @@
 '''Retrieval of candidates for a given query'''
 
 import tensorflow as tf
-import tensorflow_recommenders as tfrs
 
 from flexrec.models import QueryReduction
 from typing import Dict, Iterable, List, Optional, Tuple, Union
@@ -58,11 +57,16 @@ class RetrievalModel(tf.keras.Model):
 
     return score, query_norm, candidate_norm
 
-  def call(self, query: Dict[str, tf.Tensor], k: int=100) -> tf.Tensor:
+  def call(self, query: Dict[str, tf.Tensor], k: int=100, candidate_search: bool=False) -> tf.Tensor:
 
-    query_reduced = self.query_reduction({
-      feature_name: query[feature_name] for feature_name in self.query_feature_names
-    })
+    if candidate_search:
+      query_reduced = self.candidate_reduction({
+        feature_name: query[feature_name] for feature_name in self.candidate_feature_names
+      })
+    else:
+      query_reduced = self.query_reduction({
+        feature_name: query[feature_name] for feature_name in self.query_feature_names
+      })
     candidate_reduced = self.candidate_reduction(self._candidates_batched)
 
     cosine_score, _, _ = self.cosine_score(query_reduced, candidate_reduced, pairwise=False)
