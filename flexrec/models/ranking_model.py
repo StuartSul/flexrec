@@ -10,11 +10,13 @@ class RankingModel(tf.keras.Model):
 
   def __init__(self, 
                query_model: tf.keras.Model, 
-               candidate_model: tf.keras.Model, 
+               candidate_model: tf.keras.Model,
                layer_sizes: Optional[Iterable[int]]=None,
                use_interaction: bool=True, 
                projection_dim: int=None,
-               regularization: float=1e-3):
+               regularization: float=1e-3,
+               label_name: str='label'):
+    
     super().__init__()
     
     self.query_feature_names = query_model.feature_names
@@ -22,6 +24,8 @@ class RankingModel(tf.keras.Model):
 
     self.candidate_feature_names = candidate_model.feature_names
     self.candidate_model = candidate_model
+    
+    self.label_name = label_name
 
     self.dcn = tf.keras.Sequential()
     self.dcn.add(tf.keras.layers.Flatten())
@@ -33,12 +37,13 @@ class RankingModel(tf.keras.Model):
           kernel_regularizer=tf.keras.regularizers.L2()
         )
       )
-    for layer_size in layer_sizes:
-      self.dcn.add(
-        tf.keras.layers.Dense(
-          layer_size, activation="relu", kernel_regularizer=tf.keras.regularizers.L2()
+    if layer_sizes is not None:
+      for layer_size in layer_sizes:
+        self.dcn.add(
+          tf.keras.layers.Dense(
+            layer_size, activation="relu", kernel_regularizer=tf.keras.regularizers.L2()
+          )
         )
-      )
     self.dcn.add(
       tf.keras.layers.Dense(
         1, kernel_regularizer=tf.keras.regularizers.L2()
@@ -63,10 +68,9 @@ class RankingModel(tf.keras.Model):
     return self.dcn(tf.concat([query_embeddings, candidate_embeddings], axis=1))
 
   def compute_loss(self, features: Dict[str, tf.Tensor], training=False):
-    labels = features.pop("user_rating")
+    labels = features.pop(self.label_name)
     scores = self(features)
-    loss = self.__loss(y_true=labels, y_pred=scores)
-    return loss
+    return self.__loss(y_true=labels, y_pred=scores)
 
   def train_step(self, features: Dict[str, tf.Tensor]):
 
