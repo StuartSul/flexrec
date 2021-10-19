@@ -9,7 +9,7 @@ class QueryReduction(tf.keras.Model):
 
   def __init__(self, 
                query_model: tf.keras.Model, 
-               layer_sizes: Iterable[int]):
+               layer_sizes: Optional[Iterable[int]]):
     '''
     Helper class for RetrievalModel
     
@@ -23,6 +23,10 @@ class QueryReduction(tf.keras.Model):
     self.query_model = query_model
     self.query_reduction = tf.keras.Sequential()
     self.query_reduction.add(tf.keras.layers.Flatten())
+    
+    if layer_sizes is None or len(layer_sizes) == 0:
+      return
+    
     for layer_size in layer_sizes[:-1]:
       self.query_reduction.add(
         tf.keras.layers.Dense(
