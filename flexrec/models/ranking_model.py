@@ -7,15 +7,14 @@ from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 
 class RankingModel(tf.keras.Model):
-    
-  REGULARIZATION = 1e-3
 
   def __init__(self, 
                query_model: tf.keras.Model, 
                candidate_model: tf.keras.Model, 
                layer_sizes: Optional[Iterable[int]]=None,
                use_interaction: bool=True, 
-               projection_dim: int=None):
+               projection_dim: int=None,
+               regularization: float=1e-3):
     super().__init__()
     
     self.query_feature_names = query_model.feature_names
@@ -45,6 +44,8 @@ class RankingModel(tf.keras.Model):
         1, kernel_regularizer=tf.keras.regularizers.L2()
       )
     )
+    
+    self.regularization = regularization
 
     self.__loss = tf.keras.losses.MeanSquaredError(
       reduction=tf.keras.losses.Reduction.SUM
@@ -72,14 +73,14 @@ class RankingModel(tf.keras.Model):
     with tf.GradientTape() as tape:
       loss = self.compute_loss(features, training=True)
       regularization_loss = sum(self.losses)
-      total_loss = loss + RankingModel.REGULARIZATION * regularization_loss
+      total_loss = loss + self.regularization * regularization_loss
 
     gradients = tape.gradient(total_loss, self.trainable_variables)
     self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
     metrics = {metric.name: metric.result() for metric in self.metrics}
     metrics["loss"] = loss
-    metrics["regularization_loss"] = regularization_loss
+    metrics["regularization_loss"] = self.regularization * regularization_loss
     metrics["total_loss"] = total_loss
 
     return metrics
@@ -88,11 +89,11 @@ class RankingModel(tf.keras.Model):
 
     loss = self.compute_loss(features, training=False)
     regularization_loss = sum(self.losses)
-    total_loss = loss + RankingModel.REGULARIZATION * regularization_loss
+    total_loss = loss + self.regularization * regularization_loss
 
     metrics = {metric.name: metric.result() for metric in self.metrics}
     metrics["loss"] = loss
-    metrics["regularization_loss"] = regularization_loss
+    metrics["regularization_loss"] = self.regularization * regularization_loss
     metrics["total_loss"] = total_loss
 
     return metrics
