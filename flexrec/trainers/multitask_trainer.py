@@ -60,7 +60,7 @@ class MultitaskTrainer(tf.keras.Model):
         
     ranking_loss = 0.
     for ranking_model in self.ranking_models:
-      labels = features.pop(ranking_model.label_name)
+      labels = features[ranking_model.label_name]
       scores = ranking_model.dcn(tf.concat([query_embeddings, candidate_embeddings], axis=1))
       ranking_loss += ranking_model.loss_(y_true=labels, y_pred=scores) * self.ranking_weights[idx] +\
                       sum(ranking_model.losses) * ranking_model.regularization
